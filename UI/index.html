@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="signalr.min.js"></script>
+
+    <script src="jquery.min.js"></script>
+
+    <script>
+        // Run the script after the document is fully loaded
+        $(document).ready(function () {
+
+            // Create a new SignalR connection using the HubConnectionBuilder
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("https://localhost:7080/myhub") // Set the URL for the SignalR hub
+                .build(); // Build the connection
+
+            // Start the SignalR connection
+            connection.start()
+                .then(() => console.log("SignalR connection successful!")) // Log success message
+                .catch(error => console.error(`Failed to start connection: ${error}`)); // Log any errors
+
+            // Define a handler for the "receiveMessage" event
+            connection.on("receiveMessage", message => {
+                console.log(message); // Log the received message to the console
+                $("#messagesContainer").append(`${message}<br>`); // Append the message to the div with id "messagesContainer"
+            });
+
+            // Add a click event listener to the button with id "sendButton"
+            $("#sendButton").click(() => {
+                let message = $('#userInput').val().trim(); // Get the value from the input with id "userInput" and trim whitespace
+
+                if (!message) { // Check if the message is empty
+                    console.log("Message cannot be empty!"); // Log a warning if the message is empty
+                    return; // Exit the function if the message is empty
+                }
+
+                // Invoke the "SendMessageAsync" method on the SignalR hub
+                connection.invoke("SendMessageAsync", message)
+                    .then(() => {
+                        console.log("Message sent successfully."); // Log success message
+                        $('#userInput').val(''); // Clear the input field
+                    })
+                    .catch(error => {
+                        console.error(`An error occurred while sending a message: ${error}`); // Log any errors
+                    });
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <!-- Text input for the user to type a message -->
+    <input type="text" id="userInput">
+
+    <!-- Button to send the message -->
+    <button id="sendButton">Send</button>
+
+    <!-- Div where messages will be displayed -->
+    <div id="messagesContainer"></div> <!-- This div is targeted by the jQuery selector to display messages -->
+</body>
+</html>
