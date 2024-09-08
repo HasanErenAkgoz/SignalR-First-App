@@ -1,61 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="signalr.min.js"></script>
-
     <script src="jquery.min.js"></script>
-
+    <script src="signalr.min.js"></script>
     <script>
-        // Run the script after the document is fully loaded
         $(document).ready(function () {
 
-            // Create a new SignalR connection using the HubConnectionBuilder
+            // Create and configure the SignalR connection
             const connection = new signalR.HubConnectionBuilder()
-                .withUrl("https://localhost:7080/myhub") // Set the URL for the SignalR hub
-                .build(); // Build the connection
+                .withUrl("https://localhost:7080/myhub")
+                .withAutomaticReconnect([1000,2000,3000])
+                .build();
 
-            // Start the SignalR connection
-            connection.start()
-                .then(() => console.log("SignalR connection successful!")) // Log success message
-                .catch(error => console.error(`Failed to start connection: ${error}`)); // Log any errors
+            // Function to start the SignalR connection with retry logic
+            async function startConnection() {
+                try {
+                    await connection.start();
+                    console.log("SignalR connection successful!");
+                } catch (error) {
+                    console.error(`Connection failed: ${error}`);
+                    setTimeout(startConnection, 2000); // Retry connection after 2 seconds
+                }
+            }
 
-            // Define a handler for the "receiveMessage" event
-            connection.on("receiveMessage", message => {
-                console.log(message); // Log the received message to the console
-                $("#messagesContainer").append(`${message}<br>`); // Append the message to the div with id "messagesContainer"
+            startConnection(); // Start the connection
+
+            const connectionStatus = $('#connectionStatus');
+
+
+            connection.onreconnecting(error =>{
+                connectionStatus.css("background-color","blue");
+                connectionStatus.css("color","white");
+                connectionStatus.html("Establishing Connection")
+                connectionStatus.fadeIn(2000,() =>{
+                    setTimeout(() =>{
+                         connectionStatus.fadeOut(2000);
+                    },2000)
+                })
             });
 
-            // Add a click event listener to the button with id "sendButton"
-            $("#sendButton").click(() => {
-                let message = $('#userInput').val().trim(); // Get the value from the input with id "userInput" and trim whitespace
+            connection.onreconnected(connectionId =>{
+                connectionStatus.css("background-color","yellow");
+                connectionStatus.css("color","black");
+                connectionStatus.html("Connection")
+                connectionStatus.fadeIn(2000,() =>{
+                    setTimeout(() =>{
+                         connectionStatus.fadeOut(2000);
+                    },2000)
+                })
+            });
 
-                if (!message) { // Check if the message is empty
-                    console.log("Message cannot be empty!"); // Log a warning if the message is empty
-                    return; // Exit the function if the message is empty
+            connection.onclose(connectionId =>{
+                connectionStatus.css("background-color","red");
+                connectionStatus.css("color","white");
+                connectionStatus.html("Connection Failed")
+                connectionStatus.fadeIn(2000,() =>{
+                    setTimeout(() =>{
+                         connectionStatus.fadeOut(2000);
+                    },2000)
+                })
+            })
+
+            // Event handler for receiving messages
+            connection.on("receiveMessage", message => {
+                displayMessage(message);
+            });
+
+            // Function to display received messages
+            function displayMessage(message) {
+                $("#messagesContainer").append(`${message}<br>`);
+            }
+
+            // Event handler for the send button click
+            $("#sendButton").click(sendMessage);
+
+            // Function to send a message to the server
+            function sendMessage() {
+                const message = $('#userInput').val().trim();
+
+                if (!message) {
+                    console.log("Message cannot be empty!");
+                    return;
                 }
 
-                // Invoke the "SendMessageAsync" method on the SignalR hub
                 connection.invoke("SendMessageAsync", message)
                     .then(() => {
-                        console.log("Message sent successfully."); // Log success message
+                        console.log("Message sent successfully.");
                         $('#userInput').val(''); // Clear the input field
                     })
                     .catch(error => {
-                        console.error(`An error occurred while sending a message: ${error}`); // Log any errors
+                        console.error(`Error sending message: ${error}`);
                     });
-            });
+            }
         });
     </script>
 </head>
-
 <body>
-    <!-- Text input for the user to type a message -->
-    <input type="text" id="userInput">
-
-    <!-- Button to send the message -->
+    <div id="connectionStatus" style="display: none;"></div>
+    <input type="text" id="userInput" placeholder="Type your message here">
     <button id="sendButton">Send</button>
-
-    <!-- Div where messages will be displayed -->
-    <div id="messagesContainer"></div> <!-- This div is targeted by the jQuery selector to display messages -->
+    <div id="messagesContainer"></div>
 </body>
 </html>
