@@ -60,21 +60,21 @@
 
             })
               
-            connection.on("userJoined",connectionId =>{
+            connection.on("userJoinedAsync",connectionId =>{
                 connectionStatus.html(`${connectionId} connected`)
                 connectionStatus.css("backgorund-color","green");
                 animation();
 
             });
 
-            connection.on("userLeaved",connectionId =>{
+            connection.on("userLeavedAsync",connectionId =>{
                 connectionStatus.html(`${connectionId} leaved`)
                 connectionStatus.css("backgorund-color","red")
                 animation();
 
             });
 
-            connection.on("clients",data =>{
+            connection.on("getClientsAsync",data =>{
                 let text = "";
                 $.each(data,(index,item) =>{
                     text += `<li>${item}</li>` 
