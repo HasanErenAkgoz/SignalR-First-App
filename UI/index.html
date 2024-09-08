@@ -23,6 +23,15 @@
                 }
             }
 
+            
+            function animation(){
+                connectionStatus.fadeIn(2000,() =>{
+                    setTimeout(() =>{
+                         connectionStatus.fadeOut(2000);
+                    },2000)
+                })
+            }
+
             startConnection(); // Start the connection
 
             const connectionStatus = $('#connectionStatus');
@@ -32,40 +41,52 @@
                 connectionStatus.css("background-color","blue");
                 connectionStatus.css("color","white");
                 connectionStatus.html("Establishing Connection")
-                connectionStatus.fadeIn(2000,() =>{
-                    setTimeout(() =>{
-                         connectionStatus.fadeOut(2000);
-                    },2000)
-                })
+                animation();
             });
 
             connection.onreconnected(connectionId =>{
                 connectionStatus.css("background-color","yellow");
                 connectionStatus.css("color","black");
                 connectionStatus.html("Connection")
-                connectionStatus.fadeIn(2000,() =>{
-                    setTimeout(() =>{
-                         connectionStatus.fadeOut(2000);
-                    },2000)
-                })
+                animation();
+
             });
 
             connection.onclose(connectionId =>{
                 connectionStatus.css("background-color","red");
                 connectionStatus.css("color","white");
                 connectionStatus.html("Connection Failed")
-                connectionStatus.fadeIn(2000,() =>{
-                    setTimeout(() =>{
-                         connectionStatus.fadeOut(2000);
-                    },2000)
-                })
+                animation();
+
+            })
+              
+            connection.on("userJoined",connectionId =>{
+                connectionStatus.html(`${connectionId} connected`)
+                connectionStatus.css("backgorund-color","green");
+                animation();
+
+            });
+
+            connection.on("userLeaved",connectionId =>{
+                connectionStatus.html(`${connectionId} leaved`)
+                connectionStatus.css("backgorund-color","red")
+                animation();
+
+            });
+
+            connection.on("clients",data =>{
+                let text = "";
+                $.each(data,(index,item) =>{
+                    text += `<li>${item}</li>` 
+                    $("#clients").html(text)
+                });
             })
 
             // Event handler for receiving messages
             connection.on("receiveMessage", message => {
                 displayMessage(message);
             });
-
+          
             // Function to display received messages
             function displayMessage(message) {
                 $("#messagesContainer").append(`${message}<br>`);
@@ -92,6 +113,7 @@
                         console.error(`Error sending message: ${error}`);
                     });
             }
+
         });
     </script>
 </head>
@@ -100,5 +122,9 @@
     <input type="text" id="userInput" placeholder="Type your message here">
     <button id="sendButton">Send</button>
     <div id="messagesContainer"></div>
+
+    <div>
+        <ul id="clients"></ul>
+    </div>
 </body>
 </html>
