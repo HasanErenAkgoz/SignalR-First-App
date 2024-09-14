@@ -57,6 +57,7 @@ else
 app.UseRouting();
 app.UseCors();
 app.MapHub<MyHub>("/myhub");
+app.MapHub<MessageHub>("/messagehub");
 app.MapControllers();
 app.UseHttpsRedirection();
 app.UseStaticFiles();

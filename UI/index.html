@@ -1,15 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalR Chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <script src="jquery.min.js"></script>
     <script src="signalr.min.js"></script>
     <script>
         $(document).ready(function () {
-
+            let _connectionId = "";
             // Create and configure the SignalR connection
             const connection = new signalR.HubConnectionBuilder()
-                .withUrl("https://localhost:7080/myhub")
-                .withAutomaticReconnect([1000,2000,3000])
+                .withUrl("https://localhost:7080/messagehub")
+                .withAutomaticReconnect([1000, 2000, 3000])
                 .build();
 
             // Function to start the SignalR connection with retry logic
@@ -23,12 +29,11 @@
                 }
             }
 
-            
-            function animation(){
-                connectionStatus.fadeIn(2000,() =>{
-                    setTimeout(() =>{
-                         connectionStatus.fadeOut(2000);
-                    },2000)
+            function animation() {
+                connectionStatus.fadeIn(2000, () => {
+                    setTimeout(() => {
+                        connectionStatus.fadeOut(2000);
+                    }, 2000)
                 })
             }
 
@@ -36,75 +41,68 @@
 
             const connectionStatus = $('#connectionStatus');
 
-
-            connection.onreconnecting(error =>{
-                connectionStatus.css("background-color","blue");
-                connectionStatus.css("color","white");
-                connectionStatus.html("Establishing Connection")
+            connection.onreconnecting(error => {
+                connectionStatus.css({
+                    "background-color": "blue",
+                    "color": "white"
+                }).html("Establishing Connection");
                 animation();
             });
 
-            connection.onreconnected(connectionId =>{
-                connectionStatus.css("background-color","yellow");
-                connectionStatus.css("color","black");
-                connectionStatus.html("Connection")
+            connection.onreconnected(connectionId => {
+                connectionStatus.css({
+                    "background-color": "yellow",
+                    "color": "black"
+                }).html("Connection Restored");
                 animation();
-
             });
 
-            connection.onclose(connectionId =>{
-                connectionStatus.css("background-color","red");
-                connectionStatus.css("color","white");
-                connectionStatus.html("Connection Failed")
+            connection.onclose(error => {
+                connectionStatus.css({
+                    "background-color": "red",
+                    "color": "white"
+                }).html("Connection Failed");
                 animation();
-
-            })
-              
-            connection.on("userJoinedAsync",connectionId =>{
-                connectionStatus.html(`${connectionId} connected`)
-                connectionStatus.css("backgorund-color","green");
-                animation();
-
             });
 
-            connection.on("userLeavedAsync",connectionId =>{
-                connectionStatus.html(`${connectionId} leaved`)
-                connectionStatus.css("backgorund-color","red")
-                animation();
-
-            });
-
-            connection.on("getClientsAsync",data =>{
+            connection.on("getClientsAsync", data => {
                 let text = "";
-                $.each(data,(index,item) =>{
-                    text += `<li>${item}</li>` 
-                    $("#clients").html(text)
+                $.each(data, (index, item) => {
+                    text += `<li>${item}</li>`;
                 });
-            })
+                $("#clients").html(text);
+            });
 
             // Event handler for receiving messages
             connection.on("receiveMessage", message => {
                 displayMessage(message);
             });
-          
-            // Function to display received messages
-            function displayMessage(message) {
-                $("#messagesContainer").append(`${message}<br>`);
-            }
 
+            connection.on("getConnectionId", connectionId => {
+                _connectionId = connectionId
+                $('#connectionId').html(`Connection Id : ${connectionId}`);
+            });
+
+            
+        function displayMessage(message) {
+            $("#messagesContainer").append(`${message}<br>`);
+        }
             // Event handler for the send button click
             $("#sendButton").click(sendMessage);
-
-            // Function to send a message to the server
             function sendMessage() {
+                const alert = $('#alert');
                 const message = $('#userInput').val().trim();
+                let connectionIds = $("#connectionIds").val().split(",");
 
                 if (!message) {
-                    console.log("Message cannot be empty!");
+                    alert.css({
+                    "background-color": "red",
+                    "color": "white",
+                }).html("Message cannot be empty");
                     return;
                 }
 
-                connection.invoke("SendMessageAsync", message)
+                connection.invoke("SendMessageAsync", message,  $("input[name='group']:checked").val())
                     .then(() => {
                         console.log("Message sent successfully.");
                         $('#userInput').val(''); // Clear the input field
@@ -115,16 +113,36 @@
             }
 
         });
+
+    $("#setGroup").click(() => {
+        let groupName = $("input(name=group):checked").val();
+        connection.index("AddGroup", _connectionId, groupName).catch(error => {
+            console.error(`Error sending message: ${error}`);
+        });
+    })
     </script>
 </head>
 <body>
-    <div id="connectionStatus" style="display: none;"></div>
-    <input type="text" id="userInput" placeholder="Type your message here">
-    <button id="sendButton">Send</button>
-    <div id="messagesContainer"></div>
 
-    <div>
+    <div class="container">
+        <div id="connectionId"></div>
+        <div id="alert"></div>
+        <div id="connectionStatus"></div>
+        <input type="text" id="userInput" placeholder="Type your message here">
+        <textarea id="connectionIds" cols="30" rows="3" placeholder="Enter Connection IDs separated by commas"></textarea>
+        <div class="radio-group">
+            <input type="radio" id="groupA" name="group" value="A">
+            <label for="groupA">A</label>
+            <input type="radio" id="groupB" name="group" value="B">
+            <label for="groupB">B</label>
+            <input type="radio" id="groupC" name="group" value="C">
+            <label for="groupC">C</label>
+        </div>
+        <button id="setGroup">Gruba Gir</button>
+        <button id="sendButton">Send</button>
+        <div id="messagesContainer"></div>
         <ul id="clients"></ul>
     </div>
+    
 </body>
 </html>
